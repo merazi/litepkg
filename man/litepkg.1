@@ -1,4 +1,4 @@
-.TH litepkg 1 "May 1, 2026" "litepkg 1.0" "User Manuals"
+.TH litepkg 1 "May 2, 2026" "litepkg 1.0" "User Manuals"
 .SH NAME
 litepkg \- A minimal and colorful AUR helper.
 .SH SYNOPSIS
@@ -10,6 +10,11 @@ litepkg \- A minimal and colorful AUR helper.
 .SH DESCRIPTION
 .B litepkg
 is a lightweight command-line utility for managing packages from the Arch User Repository (AUR). It provides a simplified interface for searching, installing, and upgrading AUR packages with colorful and compact output.
+.SH ENVIRONMENT VARIABLES
+.TP
+.B LITEPKG_CLONE_DIR
+Specifies the directory where AUR repositories are cloned for building. Defaults to
+.I /tmp.
 .SH GLOBAL OPTIONS
 .TP
 .B \-\-script
@@ -20,14 +25,20 @@ Enable script-friendly output. This mode uses tab-separated values and disables 
 Search the AUR for packages matching the query.
 .RS
 .TP
-.B \-\-popularity
-Sort search results by popularity instead of name.
-.TP
 .B \-\-name
-Search by name only (ignores description).
+Search by name only.
 .TP
 .B \-\-maintainer
 Search by maintainer name.
+.TP
+.B \-\-name-desc
+Search by name and description.
+.TP
+.B \-\-description
+Search in description (default).
+.TP
+.B \-\-popularity
+Sort search results by popularity instead of name.
 .TP
 .B \-\-exclude-orphans
 Exclude packages that currently have no maintainer.
@@ -43,7 +54,9 @@ and
 .BR pacman (8).
 .TP
 .BI download " PACKAGE"
-Clone the AUR git repository for the specified package to the current directory without building or installing it.
+Clone the AUR git repository for the specified package to the
+.B LITEPKG_CLONE_DIR
+without building or installing it.
 .TP
 .BI uninstall " PACKAGE"
 Uninstall the specified package from the system using
@@ -62,8 +75,8 @@ Check for updates to all installed AUR packages and prompt to install them if ne
 .B Install a specific AUR package:
 .B litepkg install visual-studio-code-bin
 .TP
-.B Upgrade all installed AUR packages:
-.B litepkg upgrade
+.B Set clone directory and upgrade all AUR packages:
+.B LITEPKG_CLONE_DIR=~/aur-builds litepkg upgrade
 .SH SEE ALSO
 .BR pacman (8),
 .BR makepkg (8)

@@ -21,43 +21,60 @@ A minimal, colorful AUR helper written in Python. `litepkg` provides a simple in
 
 ### Building and Installing
 
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/merazi/litepkg.git
-    cd litepkg
-    ```
+Run the following command to install the `litepkg` executable and its man page:
 
-2.  **Install `litepkg` and its man page**:
-    ```bash
-    sudo make install
-    ```
-    This command installs the `litepkg` executable to `/usr/local/bin` and the man page to `/usr/local/share/man/man1/`.
+```bash
+make install
+```
+
+## Configuration
+
+`litepkg` uses a temporary directory to clone AUR repositories before building. By default, it uses `/tmp`. You can customize this by setting the `LITEPKG_CLONE_DIR` environment variable:
+
+```bash
+# Set temporarily
+export LITEPKG_CLONE_DIR=/path/to/your/dir
+
+# Or add to your shell profile (e.g., ~/.bashrc or ~/.zshrc)
+echo 'export LITEPKG_CLONE_DIR=$HOME/.cache/litepkg' >> ~/.bashrc
+```
+
+If `make install` installs to `~/.local/bin`, ensure it is in your `PATH`:
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
 
 ## Usage Guide
 
 `litepkg` uses subcommands for different operations.
 
-### Basic Commands
-
-*   **`litepkg search <query>`**: Search for packages in the AUR.
-    *   `--popularity`: Sort results by popularity.
-    *   `--name`: Search by name only.
-    *   `--exclude-outdated`: Filter out out-of-date packages.
-*   **`litepkg install <package>`**: Download, build, and install an AUR package.
-*   **`litepkg upgrade`**: Check for updates and upgrade all installed AUR packages.
-*   **`litepkg list-installed`**: List all AUR packages currently installed on the system.
-*   **`litepkg uninstall <package>`**: Remove a package using `pacman -Rs`.
-*   **`litepkg download <package>`**: Clone the AUR repository for a package without building it.
-
 ### Global Options
 
 *   **`--script`**: Output results in a machine-readable, tab-separated format without colors.
 
+### Commands
+
+*   **`litepkg search <query>`**: Search for packages in the AUR.
+    *   `--name`: Search by name only.
+    *   `--maintainer`: Search by maintainer name.
+    *   `--name-desc`: Search by name and description.
+    *   `--description`: Search in description.
+    *   `--popularity`: Sort results by popularity.
+    *   `--exclude-orphans`: Exclude packages that have no maintainer.
+    *   `--exclude-outdated`: Exclude packages marked as out-of-date.
+*   **`litepkg install <package>`**: Download, build, and install an AUR package.
+*   **`litepkg download <package>`**: Clone the AUR repository for a package to the `LITEPKG_CLONE_DIR`.
+*   **`litepkg uninstall <package>`**: Remove a package using `pacman -Rs`.
+*   **`litepkg list-installed`**: List all AUR packages currently installed on the system.
+*   **`litepkg upgrade`**: Check for updates and upgrade all installed AUR packages.
+
 ### Examples
 
-Search for a package and sort by popularity:
+Search for a package by name and sort by popularity:
 ```bash
-litepkg search nodejs --popularity
+litepkg search nodejs --name --popularity
 ```
 
 Install a package:
@@ -65,9 +82,9 @@ Install a package:
 litepkg install visual-studio-code-bin
 ```
 
-Upgrade all AUR packages:
+Set clone directory and upgrade all AUR packages:
 ```bash
-litepkg upgrade
+LITEPKG_CLONE_DIR=~/aur-builds litepkg upgrade
 ```
 
 ## Help
