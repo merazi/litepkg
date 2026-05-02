@@ -1,63 +1,74 @@
-'" roff
 .TH litepkg 1 "May 1, 2026" "litepkg 1.0" "User Manuals"
 .SH NAME
-litepkg \- A simple tool for managing packages locally.
+litepkg \- A minimal and colorful AUR helper.
 .SH SYNOPSIS
 .B litepkg
 [
-.B \-h
-|
-.BI \-v " VERSION"
+.B \-\-script
 ]
-[
-.BI "COMMAND" " ARGUMENTS..."
-]
+.BI COMMAND " [ARGUMENTS...]"
 .SH DESCRIPTION
-This manual page describes the
 .B litepkg
-command, a utility for managing packages.
-It allows users to list, install, and clean packages with ease.
+is a lightweight command-line utility for managing packages from the Arch User Repository (AUR). It provides a simplified interface for searching, installing, and upgrading AUR packages with colorful and compact output.
+.SH GLOBAL OPTIONS
+.TP
+.B \-\-script
+Enable script-friendly output. This mode uses tab-separated values and disables all ANSI color codes.
 .SH COMMANDS
 .TP
-.B list
-List all installed packages.
+.BI search " [OPTIONS] QUERY"
+Search the AUR for packages matching the query.
+.RS
 .TP
-.B install
-Install a new package. Requires package name as an argument.
+.B \-\-popularity
+Sort search results by popularity instead of name.
 .TP
-.B clean
-Clean up temporary build files.
-.SH OPTIONS
+.B \-\-name
+Search by name only (ignores description).
 .TP
-.BI \-h , \-\-help
-Display this help message and exit.
+.B \-\-maintainer
+Search by maintainer name.
 .TP
-.BI \-v , \-\-version " VERSION"
-Output version information and exit.
+.B \-\-exclude-orphans
+Exclude packages that currently have no maintainer.
+.TP
+.B \-\-exclude-outdated
+Exclude packages marked as out-of-date in the AUR.
+.RE
+.TP
+.BI install " PACKAGE"
+Download, build, and install the specified AUR package using
+.BR makepkg (8)
+and
+.BR pacman (8).
+.TP
+.BI download " PACKAGE"
+Clone the AUR git repository for the specified package to the current directory without building or installing it.
+.TP
+.BI uninstall " PACKAGE"
+Uninstall the specified package from the system using
+.B pacman \-Rs.
+.TP
+.B list-installed
+Display a list of all AUR packages currently installed on the system.
+.TP
+.B upgrade
+Check for updates to all installed AUR packages and prompt to install them if newer versions are available.
 .SH EXAMPLES
 .TP
-.B Example 1: List packages
-.RS
-.B litepkg
-list
-.RE
+.B Search for a package with popularity sorting:
+.B litepkg search nodejs \-\-popularity
 .TP
-.B Example 2: Install a package
-.RS
-.B litepkg
-install my-package
-.RE
+.B Install a specific AUR package:
+.B litepkg install visual-studio-code-bin
 .TP
-.B Example 3: Clean up
-.RS
-.B litepkg
-clean
-.RE
+.B Upgrade all installed AUR packages:
+.B litepkg upgrade
+.SH SEE ALSO
+.BR pacman (8),
+.BR makepkg (8)
 .SH AUTHOR
 Written by Gemini CLI.
 .SH COPYRIGHT
 Copyright (c) 2026 Gemini CLI.
-License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>.
-This is free software: you are free to change and redistribute it.
-There is NO WARRANTY, to the extent permitted by law.
-." End of man page.
+License MIT.

@@ -1,60 +1,87 @@
 # litepkg
 
-A simple and efficient command-line tool for managing your local packages.
+A minimal, colorful AUR helper written in Python. `litepkg` provides a simple interface for searching, installing, and managing Arch User Repository (AUR) packages.
+
+## Features
+
+- **Colorful Output:** Minimalistic and clean terminal output with color support.
+- **Smart Search:** Search by name, description, or maintainer; filter out-of-date or orphan packages.
+- **Dependency Management:** Uses `makepkg` and `pacman` for reliable installation and removal.
+- **Batch Upgrades:** Easily check for and apply updates to all your AUR packages.
+- **Scripting Friendly:** Includes a `--script` mode for tab-separated, colorless output.
 
 ## Installation
 
-To build and install `litepkg` on your system, you can use the provided Makefile.
+### Prerequisites
 
-1.  **Clone the repository** (if you haven't already):
+- Python 3.x
+- `git`
+- `pacman`
+- `makepkg` (part of `base-devel`)
+
+### Building and Installing
+
+1.  **Clone the repository**:
     ```bash
-    git clone git@github.com:merazi/litepkg.git
+    git clone https://github.com/merazi/litepkg.git
     cd litepkg
     ```
 
-2.  **Build the project**:
+2.  **Install `litepkg` and its man page**:
     ```bash
-    make
+    sudo make install
     ```
-    *Note: If you are building from source, you may need to modify the `BUILD_CMD` in the `Makefile` to match your project's build system (e.g., `gcc main.c -o litepkg`, `go build -o litepkg`, `cargo build --release`). The current `make` command is a placeholder.*
-
-3.  **Install `litepkg` and its man page**:
-    ```bash
-    make install
-    ```
-    This command will install the `litepkg` executable to `~/.local/bin` and its man page to `~/.local/share/man/man1/`. Ensure that `~/.local/bin` is in your system's `PATH` environment variable to run `litepkg` from anywhere.
-
-4.  **Clean up build artifacts**:
-    ```bash
-    make clean
-    ```
-    This command removes any temporary build files, including the compiled `litepkg` executable.
+    This command installs the `litepkg` executable to `/usr/local/bin` and the man page to `/usr/local/share/man/man1/`.
 
 ## Usage Guide
 
-`litepkg` provides a simple interface for managing your local packages.
+`litepkg` uses subcommands for different operations.
 
 ### Basic Commands
 
-*   **`litepkg list`**: Displays a list of all installed packages.
-*   **`litepkg install <package_name>`**: Installs a specified package.
-*   **`litepkg clean`**: Cleans up temporary build files.
+*   **`litepkg search <query>`**: Search for packages in the AUR.
+    *   `--popularity`: Sort results by popularity.
+    *   `--name`: Search by name only.
+    *   `--exclude-outdated`: Filter out out-of-date packages.
+*   **`litepkg install <package>`**: Download, build, and install an AUR package.
+*   **`litepkg upgrade`**: Check for updates and upgrade all installed AUR packages.
+*   **`litepkg list-installed`**: List all AUR packages currently installed on the system.
+*   **`litepkg uninstall <package>`**: Remove a package using `pacman -Rs`.
+*   **`litepkg download <package>`**: Clone the AUR repository for a package without building it.
 
-### Help
+### Global Options
 
-For detailed information on options and commands, you can view the man page:
+*   **`--script`**: Output results in a machine-readable, tab-separated format without colors.
+
+### Examples
+
+Search for a package and sort by popularity:
+```bash
+litepkg search nodejs --popularity
+```
+
+Install a package:
+```bash
+litepkg install visual-studio-code-bin
+```
+
+Upgrade all AUR packages:
+```bash
+litepkg upgrade
+```
+
+## Help
+
+For more detailed information, view the man page:
 ```bash
 man litepkg
 ```
 Or use the help flag:
 ```bash
-litepkg -h
+litepkg --help
 ```
-
-## Contributing
-
-(Add contribution guidelines here if applicable)
 
 ## License
 
-(Add license information here if applicable)
+MIT License (or as specified in the project).
+

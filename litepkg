@@ -1,0 +1,300 @@
+#!/usr/bin/env python3
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import urllib.request
+import urllib.parse
+
+AUR_RPC_URL = "https://aur.archlinux.org/rpc/"
+
+class Colors:
+    BOLD = "\033[1m"
+    RESET = "\033[0m"
+    BLUE = "\033[34m"
+    CYAN = "\033[36m"
+    GREEN = "\033[32m"
+    MAGENTA = "\033[35m"
+    YELLOW = "\033[33m"
+    DIM = "\033[2m"
+    RED = "\033[31m"
+
+def colorize(text, color):
+    if sys.stdout.isatty():
+        return f"{color}{text}{Colors.RESET}"
+    return text
+
+def check_root():
+    if os.getuid() == 0:
+        sys.exit(colorize("Error: Do not run as root.", Colors.RED))
+
+def aur_rpc(params):
+    params["v"] = 5
+    query_string = urllib.parse.urlencode(params, doseq=True)
+    url = f"{AUR_RPC_URL}?{query_string}"
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'litepkg/1.0'})
+        with urllib.request.urlopen(req) as response:
+            return json.loads(response.read().decode())
+    except Exception as e:
+        sys.exit(colorize(f"Error connecting to AUR: {e}", Colors.RED))
+
+def get_official_packages():
+    try:
+        output = subprocess.check_output(["pacman", "-Slq"], text=True)
+        return set(output.splitlines())
+    except subprocess.CalledProcessError:
+        return set()
+
+def get_installed_packages():
+    try:
+        output = subprocess.check_output(["pacman", "-Qq"], text=True)
+        return set(output.splitlines())
+    except subprocess.CalledProcessError:
+        return set()
+
+def format_table(rows, headers, script_mode=False):
+    if not rows:
+        return
+    
+    if script_mode:
+        for row in rows:
+            print("\t".join(map(str, row)))
+        return
+
+    # Calculate column widths
+    widths = [len(h) for h in headers]
+    for row in rows:
+        for i, val in enumerate(row):
+            widths[i] = max(widths[i], len(str(val)))
+
+    # Print headers
+    header_row = "  ".join(str(h).ljust(widths[i]) for i, h in enumerate(headers))
+    print(colorize(header_row, Colors.BOLD))
+    print(colorize("-" * len(header_row), Colors.DIM))
+
+    # Print rows
+    for row in rows:
+        colored_row = []
+        for i, val in enumerate(row):
+            val_str = str(val).ljust(widths[i])
+            if i == 0: # Usually package name
+                colored_row.append(colorize(val_str, Colors.BLUE + Colors.BOLD))
+            elif "Version" in headers[i]:
+                colored_row.append(colorize(val_str, Colors.GREEN))
+            else:
+                colored_row.append(val_str)
+        print("  ".join(colored_row))
+
+def handle_search(args):
+    params = {"type": "search", "arg": args.query}
+    if args.maintainer:
+        params["by"] = "maintainer"
+    elif args.name:
+        params["by"] = "name"
+    elif args.name_desc or args.description:
+        params["by"] = "name-desc"
+
+    data = aur_rpc(params)
+    results = data.get("results", [])
+
+    official_pkgs = get_official_packages()
+    installed_pkgs = get_installed_packages()
+    filtered_results = []
+    for r in results:
+        if r["Name"] in official_pkgs:
+            continue
+        if args.exclude_orphans and r.get("Maintainer") is None:
+            continue
+        if args.exclude_outdated and r.get("OutOfDate") is not None:
+            continue
+        filtered_results.append(r)
+
+    if args.popularity:
+        filtered_results.sort(key=lambda x: x.get("Popularity", 0), reverse=True)
+    else:
+        filtered_results.sort(key=lambda x: x["Name"].lower())
+
+    if args.script:
+        rows = []
+        for i, r in enumerate(filtered_results, 1):
+            rows.append([
+                f"[{i}]",
+                r["Name"],
+                r["Version"],
+                f"({r.get('NumVotes', 0)})",
+                r.get("Description", "")
+            ])
+        format_table(rows, ["Index", "Name", "Version", "Votes", "Description"], script_mode=True)
+    else:
+        for i, r in enumerate(filtered_results, 1):
+            name = r["Name"]
+            ver = r["Version"]
+            votes = r.get("NumVotes", 0)
+            desc = r.get("Description", "")
+            
+            idx_str = colorize(f"[{i}]", Colors.DIM)
+            name_str = colorize(f"aur/{name}", Colors.BLUE + Colors.BOLD)
+            ver_str = colorize(ver, Colors.GREEN)
+            votes_str = colorize(f"({votes})", Colors.MAGENTA)
+            inst_str = colorize(" [installed]", Colors.CYAN) if name in installed_pkgs else ""
+            
+            print(f"{idx_str} {name_str} {ver_str} {votes_str}{inst_str}")
+            if desc:
+                print(f"    {desc}")
+
+def handle_download(pkg, script_mode=False):
+    aur_git_url = f"https://aur.archlinux.org/{pkg}.git"
+    if not script_mode:
+        print(f"Cloning {colorize(pkg, Colors.BLUE + Colors.BOLD)} from {colorize(aur_git_url, Colors.DIM)}...")
+    try:
+        subprocess.check_call(["git", "clone", aur_git_url])
+        return True
+    except subprocess.CalledProcessError:
+        print(colorize(f"Error: Failed to clone {pkg}.", Colors.RED))
+        return False
+
+def handle_install(pkg, script_mode=False):
+    if handle_download(pkg, script_mode):
+        os.chdir(pkg)
+        try:
+            subprocess.check_call(["makepkg", "-si"])
+        except subprocess.CalledProcessError:
+            print(colorize(f"Error: makepkg failed for {pkg}.", Colors.RED))
+        finally:
+            os.chdir("..")
+
+def handle_uninstall(pkg):
+    try:
+        subprocess.check_call(["sudo", "pacman", "-Rs", pkg])
+    except subprocess.CalledProcessError:
+        print(colorize(f"Error: Failed to uninstall {pkg}.", Colors.RED))
+
+def handle_list_installed(script_mode=False):
+    try:
+        output = subprocess.check_output(["pacman", "-Qm"], text=True)
+        rows = [line.split() for line in output.splitlines() if line.strip()]
+        if script_mode:
+            for row in rows:
+                print("\t".join(row))
+        else:
+            for pkg, ver in rows:
+                print(f"{colorize(pkg, Colors.BLUE + Colors.BOLD)} {colorize(ver, Colors.GREEN)}")
+    except subprocess.CalledProcessError:
+        print(colorize("Error: Failed to list installed AUR packages.", Colors.RED))
+
+def handle_upgrade(script_mode=False):
+    try:
+        output = subprocess.check_output(["pacman", "-Qm"], text=True)
+        installed = {line.split()[0]: line.split()[1] for line in output.splitlines() if line.strip()}
+    except subprocess.CalledProcessError:
+        print(colorize("Error: Failed to get installed AUR packages.", Colors.RED))
+        return
+
+    if not installed:
+        if not script_mode:
+            print("No AUR packages installed.")
+        return
+
+    # Batch check AUR RPC
+    params = {"type": "info", "arg[]": list(installed.keys())}
+    data = aur_rpc(params)
+    results = data.get("results", [])
+
+    updates = []
+    for r in results:
+        pkg = r["Name"]
+        new_ver = r["Version"]
+        old_ver = installed[pkg]
+        
+        try:
+            res = subprocess.check_output(["vercmp", old_ver, new_ver], text=True).strip()
+            if int(res) < 0:
+                updates.append((pkg, old_ver, new_ver))
+        except (subprocess.CalledProcessError, ValueError):
+            continue
+
+    if not updates:
+        if not script_mode:
+            print(colorize("Everything is up to date.", Colors.GREEN))
+        return
+
+    if not script_mode:
+        print(colorize(f"Found {len(updates)} updates:", Colors.BOLD))
+        for pkg, old, new in updates:
+            print(f"{colorize(pkg, Colors.BLUE + Colors.BOLD)} {colorize(old, Colors.DIM)} -> {colorize(new, Colors.GREEN)}")
+        
+        choice = input(f"\nProceed with upgrade? [{colorize('Y', Colors.BOLD)}/n] ").strip().lower()
+        if choice and choice != 'y':
+            return
+    else:
+        for pkg, old, new in updates:
+            print(f"{pkg}\t{old}\t{new}")
+        return
+
+    for pkg, _, _ in updates:
+        print(f"\nUpgrading {colorize(pkg, Colors.BLUE + Colors.BOLD)}...")
+        handle_install(pkg)
+
+def main():
+    check_root()
+    
+    # Parent parser for shared arguments
+    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument("--script", action="store_true", help="Script-friendly output (tab-separated).")
+
+    parser = argparse.ArgumentParser(description="A minimal AUR helper.")
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
+
+    # Search
+    search_parser = subparsers.add_parser("search", parents=[parent_parser], help="Search for AUR packages.")
+    search_parser.add_argument("query", help="Search query.")
+    search_parser.add_argument("--popularity", action="store_true", help="Sort by popularity.")
+    search_parser.add_argument("--maintainer", action="store_true", help="Search by maintainer.")
+    search_parser.add_argument("--exclude-orphans", action="store_true", help="Exclude orphan packages.")
+    search_parser.add_argument("--exclude-outdated", action="store_true", help="Exclude out-of-date packages.")
+    search_parser.add_argument("--description", action="store_true", help="Search in description (default).")
+    search_parser.add_argument("--name", action="store_true", help="Search by name only.")
+    search_parser.add_argument("--name-desc", action="store_true", help="Search by name and description.")
+
+    # Install
+    install_parser = subparsers.add_parser("install", parents=[parent_parser], help="Install an AUR package.")
+    install_parser.add_argument("pkg", help="Package name.")
+
+    # Download
+    download_parser = subparsers.add_parser("download", parents=[parent_parser], help="Download an AUR package.")
+    download_parser.add_argument("pkg", help="Package name.")
+
+    # Uninstall
+    uninstall_parser = subparsers.add_parser("uninstall", parents=[parent_parser], help="Uninstall a package.")
+    uninstall_parser.add_argument("pkg", help="Package name.")
+
+    # List Installed
+    subparsers.add_parser("list-installed", parents=[parent_parser], help="List installed AUR packages.")
+
+    # Upgrade
+    subparsers.add_parser("upgrade", parents=[parent_parser], help="Upgrade AUR packages.")
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        return
+
+    if args.command == "search":
+        handle_search(args)
+    elif args.command == "download":
+        handle_download(args.pkg, args.script)
+    elif args.command == "install":
+        handle_install(args.pkg, args.script)
+    elif args.command == "uninstall":
+        handle_uninstall(args.pkg)
+    elif args.command == "list-installed":
+        handle_list_installed(args.script)
+    elif args.command == "upgrade":
+        handle_upgrade(args.script)
+
+if __name__ == "__main__":
+    main()

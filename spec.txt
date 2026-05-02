@@ -1,0 +1,33 @@
+Act as an expert Python and Arch Linux developer. Build a minimal AUR helper named 'litepkg'.
+
+CONSTRAINTS:
+1. Language: Python 3.
+2. Dependencies: Use only standard libraries (urllib.request, json, subprocess, argparse, os, sys). NO external libraries like 'requests'.
+3. Target: Arch Linux AUR RPC Interface v5.
+4. Safety: Explicitly block execution if run as root/sudo.
+
+COMMANDS TO IMPLEMENT:
+- search [query]: Default alphabetical (case-insensitive). Filter out packages found in official repos (pacman -Slq). 
+    * --popularity: Sort by NumVotes/Popularity.
+    * --maintainer: Search 'by=maintainer'.
+    * --exclude-orphans: Filter out results where Maintainer is null.
+    * --exclude-outdated: Filter out results where OutOfDate is not null.
+    * --description: Search 'by=name-desc'.
+    * --name: Search 'by=name'.
+    * --name-desc: Search 'by=name-desc'.
+- install [pkg]: Clone from AUR git, then run 'makepkg -si'.
+- download [pkg]: Clone from AUR git into current directory and exit.
+- uninstall [pkg]: Wrapper for 'sudo pacman -Rs'.
+- list-installed: Wrapper for 'pacman -Qm'.
+- upgrade: 
+    1. Identify foreign packages via 'pacman -Qm'.
+    2. Batch check versions via AUR RPC info.
+    3. Compare versions using the system 'vercmp' utility.
+    4. Prompt user [Y/n] before building/installing updates.
+
+UI REQUIREMENTS:
+- Use clean text output.
+- For search results, display: [Index] Name Version (Votes) - Description.
+- For upgrades, display a table of Old Version -> New Version.
+
+Write the code as a single, well-organized Python script.
