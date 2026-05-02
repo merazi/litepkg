@@ -26,6 +26,10 @@ def colorize(text, color):
         return f"{color}{text}{Colors.RESET}"
     return text
 
+def get_clone_dir():
+    base_dir = os.environ.get("LITEPKG_CLONE_DIR", "/tmp")
+    return os.path.expanduser(base_dir)
+
 def check_root():
     if os.getuid() == 0:
         sys.exit(colorize("Error: Do not run as root.", Colors.RED))
@@ -58,7 +62,7 @@ def get_installed_packages():
 def format_table(rows, headers, script_mode=False):
     if not rows:
         return
-    
+
     if script_mode:
         for row in rows:
             print("\t".join(map(str, row)))
@@ -126,7 +130,7 @@ def handle_search(args):
                 r["Version"],
                 f"({r.get('NumVotes', 0)})",
                 r.get("Description", "")
-            ])
+                ])
         format_table(rows, ["Index", "Name", "Version", "Votes", "Description"], script_mode=True)
     else:
         for i, r in enumerate(filtered_results, 1):
@@ -134,37 +138,50 @@ def handle_search(args):
             ver = r["Version"]
             votes = r.get("NumVotes", 0)
             desc = r.get("Description", "")
-            
+
             idx_str = colorize(f"[{i}]", Colors.DIM)
             name_str = colorize(f"aur/{name}", Colors.BLUE + Colors.BOLD)
             ver_str = colorize(ver, Colors.GREEN)
             votes_str = colorize(f"({votes})", Colors.MAGENTA)
             inst_str = colorize(" [installed]", Colors.CYAN) if name in installed_pkgs else ""
-            
+
             print(f"{idx_str} {name_str} {ver_str} {votes_str}{inst_str}")
             if desc:
                 print(f"    {desc}")
 
 def handle_download(pkg, script_mode=False):
+    clone_dir = get_clone_dir()
+    target_path = os.path.join(clone_dir,pkg)
     aur_git_url = f"https://aur.archlinux.org/{pkg}.git"
     if not script_mode:
         print(f"Cloning {colorize(pkg, Colors.BLUE + Colors.BOLD)} from {colorize(aur_git_url, Colors.DIM)}...")
+
+    os.makedirs(clone_dir, exist_ok=True)
+
+    if os.path.exists(target_path):
+        if not script_mode:
+            print(colorize(f"Note: {target_path} already exists. Skipping clone.", Colors.YELLOW))
+            return True
+
     try:
-        subprocess.check_call(["git", "clone", aur_git_url])
+        subprocess.check_call(["git", "clone", aur_git_url, target_path])
         return True
     except subprocess.CalledProcessError:
         print(colorize(f"Error: Failed to clone {pkg}.", Colors.RED))
         return False
 
 def handle_install(pkg, script_mode=False):
+    clone_dir = get_clone_dir()
+    pkg_path = os.path.join(clone_dir,pkg)
     if handle_download(pkg, script_mode):
-        os.chdir(pkg)
+        original_dir=os.getcwd()
         try:
+            os.chdir(pkg_path)
             subprocess.check_call(["makepkg", "-si"])
         except subprocess.CalledProcessError:
             print(colorize(f"Error: makepkg failed for {pkg}.", Colors.RED))
         finally:
-            os.chdir("..")
+            os.chdir(original_dir)
 
 def handle_uninstall(pkg):
     try:
@@ -208,7 +225,7 @@ def handle_upgrade(script_mode=False):
         pkg = r["Name"]
         new_ver = r["Version"]
         old_ver = installed[pkg]
-        
+
         try:
             res = subprocess.check_output(["vercmp", old_ver, new_ver], text=True).strip()
             if int(res) < 0:
@@ -225,7 +242,7 @@ def handle_upgrade(script_mode=False):
         print(colorize(f"Found {len(updates)} updates:", Colors.BOLD))
         for pkg, old, new in updates:
             print(f"{colorize(pkg, Colors.BLUE + Colors.BOLD)} {colorize(old, Colors.DIM)} -> {colorize(new, Colors.GREEN)}")
-        
+
         choice = input(f"\nProceed with upgrade? [{colorize('Y', Colors.BOLD)}/n] ").strip().lower()
         if choice and choice != 'y':
             return
@@ -240,7 +257,7 @@ def handle_upgrade(script_mode=False):
 
 def main():
     check_root()
-    
+
     # Parent parser for shared arguments
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument("--script", action="store_true", help="Script-friendly output (tab-separated).")
