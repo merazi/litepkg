@@ -100,5 +100,4 @@ litepkg --help
 
 ## License
 
-MIT License (or as specified in the project).
-
+MIT
