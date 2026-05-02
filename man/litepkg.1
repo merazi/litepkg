@@ -1,0 +1,63 @@
+'" roff
+.TH litepkg 1 "May 1, 2026" "litepkg 1.0" "User Manuals"
+.SH NAME
+litepkg \- A simple tool for managing packages locally.
+.SH SYNOPSIS
+.B litepkg
+[
+.B \-h
+|
+.BI \-v " VERSION"
+]
+[
+.BI "COMMAND" " ARGUMENTS..."
+]
+.SH DESCRIPTION
+This manual page describes the
+.B litepkg
+command, a utility for managing packages.
+It allows users to list, install, and clean packages with ease.
+.SH COMMANDS
+.TP
+.B list
+List all installed packages.
+.TP
+.B install
+Install a new package. Requires package name as an argument.
+.TP
+.B clean
+Clean up temporary build files.
+.SH OPTIONS
+.TP
+.BI \-h , \-\-help
+Display this help message and exit.
+.TP
+.BI \-v , \-\-version " VERSION"
+Output version information and exit.
+.SH EXAMPLES
+.TP
+.B Example 1: List packages
+.RS
+.B litepkg
+list
+.RE
+.TP
+.B Example 2: Install a package
+.RS
+.B litepkg
+install my-package
+.RE
+.TP
+.B Example 3: Clean up
+.RS
+.B litepkg
+clean
+.RE
+.SH AUTHOR
+Written by Gemini CLI.
+.SH COPYRIGHT
+Copyright (c) 2026 Gemini CLI.
+License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+." End of man page.
